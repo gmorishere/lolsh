@@ -10,26 +10,26 @@ local function is_chat_whitelisted(id)
   return white
 end
 
-local function kick(user_id, chat_id)
+local function kick_user(user_id, chat_id)
   local chat = 'chat#id'..chat_id
   local user = 'user#id'..user_id
   chat_del_user(chat, user, ok_cb, true)
 end
 
-local function ban(user_id, chat_id)
+local function ban_user(user_id, chat_id)
   -- Save to redis
   local hash =  'banned:'..chat_id..':'..user_id
   redis:set(hash, true)
   -- Kick from chat
-  kick(user_id, chat_id)
+  kick_user(user_id, chat_id)
 end
 
-local function superban(user_id, chat_id)
+local function superban_user(user_id, chat_id)
   -- Save to redis
   local hash =  'superbanned:'..user_id
   redis:set(hash, true)
   -- Kick from chat
-  kick(user_id, chat_id)
+  kick_user(user_id, chat_id)
 end
 
 local function is_banned(user_id, chat_id)
@@ -62,7 +62,7 @@ local function pre_process(msg)
       local banned = is_banned(user_id, msg.to.id)
       if superbanned or banned then
         print('User is banned!')
-        kick(user_id, msg.to.id)
+        kick_user(user_id, msg.to.id)
       end
     end
     -- No further checks
@@ -77,12 +77,12 @@ local function pre_process(msg)
     local banned = is_banned(user_id, chat_id)
     if superbanned then
       print('SuperBanned user talking!')
-      superban(user_id, chat_id)
+      superban_user(user_id, chat_id)
       msg.text = ''
     end
     if banned then
       print('Banned user talking!')
-      ban(user_id, chat_id)
+      ban_user(user_id, chat_id)
       msg.text = ''
     end
   end
@@ -135,13 +135,13 @@ local function username_id(cb_extra, success, result)
       	member_username = member
       	member_id = v.id
       	if get_cmd == 'kick' then
-      	    return kick(member_id, chat_id)
+      	    return kick_user(member_id, chat_id)
       	elseif get_cmd == 'ban user' then
       	    send_large_msg(receiver, 'User @'..member..' ['..member_id..'] banned')
-      	    return ban(member_id, chat_id)
+      	    return ban_user(member_id, chat_id)
       	elseif get_cmd == 'superban user' then
       	    send_large_msg(receiver, 'User @'..member..' ['..member_id..'] globally banned!')
-      	    return superbanuser(member_id, chat_id)
+      	    return superban_user(member_id, chat_id)
       	elseif get_cmd == 'whitelist user' then
       	    local hash = 'whitelist:user#id'..member_id
       	    redis:set(hash, true)
@@ -158,7 +158,7 @@ end
 
 local function run(msg, matches)
   if matches[1] == 'kickme' then
-  	kick(msg.from.id, msg.to.id)
+  	kick_user(msg.from.id, msg.to.id)
   end
   if not is_momod(msg) then
     return nil
@@ -178,7 +178,7 @@ local function run(msg, matches)
     if msg.to.type == 'chat' then
       if matches[2] == 'user' then
         if string.match(matches[3], '^%d+$') then
-            ban(user_id, chat_id)
+            ban_user(user_id, chat_id)
             send_large_msg(receiver, 'User '..user_id..' banned!')
         else
             local member = string.gsub(matches[3], '@', '')
@@ -200,7 +200,7 @@ local function run(msg, matches)
     local chat_id = msg.to.id
     if matches[2] == 'user' then
         if string.match(matches[3], '^%d+$') then
-            superban(user_id, chat_id)
+            superban_user(user_id, chat_id)
             send_large_msg(receiver, 'User '..user_id..' globally banned!')
         else
             local member = string.gsub(matches[3], '@', '')
@@ -217,7 +217,7 @@ local function run(msg, matches)
   if matches[1] == 'kick' then
     if msg.to.type == 'chat' then
       if string.match(matches[2], '^%d+$') then
-          kick(matches[2], msg.to.id)
+          kick_user(matches[2], msg.to.id)
       else
           local member = string.gsub(matches[2], '@', '')
           chat_info(receiver, username_id, {get_cmd=get_cmd, receiver=receiver, chat_id=msg.to.id, member=member})
@@ -294,16 +294,16 @@ return {
           "!whitelist chat : Allow everybody on current chat to use the bot when whitelist mode is enabled",
           "!whitelist delete user <user_id> : Remove user from whitelist",
           "!whitelist delete chat : Remove chat from whitelist",
-          "!ban <user_id> : Kick user from chat and kicks it if joins chat again",
-          "!ban <username> : Kick user from chat and kicks it if joins chat again",
-          "!unban <user_id> : Unban user",
+          "!ban user <user_id> : Kick user from chat and kicks it if joins chat again",
+          "!ban user <username> : Kick user from chat and kicks it if joins chat again",
+          "!ban delete <user_id> : Unban user",
           "!kick <user_id> : Kick user from chat group by id",
           "!kick <username> : Kick user from chat group by username",
           },
       admin = {
-          "!superban <user_id> : Kick user from all chat and kicks it if joins again",
-          "!superban <username> : Kick user from all chat and kicks it if joins again",
-          "!unsuperban <user_id> : Unban user",
+          "!superban user <user_id> : Kick user from all chat and kicks it if joins again",
+          "!superban user <username> : Kick user from all chat and kicks it if joins again",
+          "!superban delete <user_id> : Unban user",
           },
       },
   patterns = {
@@ -313,9 +313,9 @@ return {
     "^!(whitelist) (chat)$",
     "^!(whitelist) (delete) (user) (.*)$",
     "^!(whitelist) (delete) (chat)$",
-    "^!(ban) (.*)$",
+    "^!(ban) (user) (.*)$",
     "^!(ban) (delete) (.*)$",
-    "^!(superban) (.*)$",
+    "^!(superban) (user) (.*)$",
     "^!(superban) (delete) (.*)$",
     "^!(kick) (.*)$",
     "^!(kickme)$",
