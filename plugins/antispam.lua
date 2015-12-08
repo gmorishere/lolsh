@@ -1,8 +1,8 @@
 
 do
 
-local NUM_MSG_MAX = 4
-local TIME_CHECK = 4 -- seconds
+local NUM_MSG_MAX = 6
+local TIME_CHECK = 5 -- seconds
 
 
 
